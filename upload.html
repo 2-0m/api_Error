@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>مشاركة صورة</title>
+  <style>
+    body {
+      font-family: 'Arial', sans-serif;
+      direction: rtl;
+      background: linear-gradient(to right, #74ebd5, #ACB6E5);
+      padding: 50px;
+      color: #333;
+    }
+
+    .container {
+      background: #fff;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+      max-width: 600px;
+      margin: auto;
+      text-align: center;
+    }
+
+    input[type="file"] {
+      margin-bottom: 10px;
+    }
+
+    button {
+      background-color: #007BFF;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 7px;
+      cursor: pointer;
+      transition: 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    .result {
+      margin-top: 20px;
+      font-weight: bold;
+      color: green;
+      transition: opacity 0.5s ease;
+    }
+
+    .image-entry {
+      margin-top: 15px;
+      padding: 10px;
+      background: #f1f1f1;
+      border-radius: 10px;
+    }
+
+    a.delete-link {
+      color: red;
+      text-decoration: none;
+      font-size: 0.9em;
+      margin-right: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>رفع صورة ومشاركتها</h2>
+    <form id="uploadForm">
+      <input type="file" name="image" id="imageInput" required>
+      <button type="submit" id="uploadBtn">رفع</button>
+    </form>
+
+    <div class="result" id="result"></div>
+    <div id="gallery"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById('uploadForm');
+    const imageInput = document.getElementById('imageInput');
+    const result = document.getElementById('result');
+    const gallery = document.getElementById('gallery');
+    const uploadBtn = document.getElementById('uploadBtn');
+    let imageUploaded = false;
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      if (!imageInput.files.length) {
+        result.innerHTML = 'يرجى اختيار صورة أولاً.';
+        return;
+      }
+
+      const formData = new FormData();
+      formData.append('image', imageInput.files[0]);
+
+      const response = await fetch('/upload', {
+        method: 'POST',
+        body: formData
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        showMessage('تم رفع الصورة!');
+        addLinkToGallery(data.url);
+        imageInput.value = '';
+        uploadBtn.textContent = 'رفع صورة جديدة';
+        imageUploaded = true;
+      } else {
+        showMessage('خطأ: ' + data.error, true);
+      }
+    });
+
+    function showMessage(text, isError = false) {
+      result.textContent = text;
+      result.style.color = isError ? 'red' : 'green';
+      result.style.opacity = '1';
+      setTimeout(() => {
+        result.style.opacity = '0';
+      }, 2000);
+    }
+
+    function addLinkToGallery(url) {
+      const filename = url.split('/').pop();
+      const div = document.createElement('div');
+      div.className = 'image-entry';
+      div.innerHTML = `
+        <div>
+          <a href="${url}" target="_blank">${url}</a>
+          |
+          <a href="#" class="delete-link" onclick="deleteImage('${filename}', this)">حذف</a>
+        </div>
+      `;
+      gallery.prepend(div);
+    }
+
+    async function deleteImage(filename, link) {
+      const response = await fetch(`/delete/${filename}`, {
+        method: 'POST'
+      });
+
+      const data = await response.json();
+      if (response.ok) {
+        link.closest('.image-entry').remove();
+      } else {
+        alert(data.error);
+      }
+    }
+  </script>
+</body>
+</html>
